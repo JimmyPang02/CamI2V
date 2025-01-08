@@ -81,5 +81,5 @@ class Qwen2VL_Captioner:
 
 if __name__ == "__main__":
     # model_path = "/mnt/nfs/data/pretrained_models/Qwen2-VL-7B-Instruct-GPTQ-Int8"
-    model_path = "/mnt/nfs/data/pretrained_models/Qwen2-VL-7B-Instruct-AWQ"
+    model_path = "/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/Qwen2-VL-7B-Instruct-AWQ"
     captioner = Qwen2VL_Captioner(model_path)

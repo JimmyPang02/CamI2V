@@ -12,6 +12,10 @@ from PIL import Image
 from pytorch_lightning import seed_everything
 from torch import Tensor
 
+# 引入路径
+import sys
+sys.path.append("/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/CamI2V")
+
 from CameraControl.cameractrl.cameractrl import CameraCtrl
 from CameraControl.CamI2V.cami2v import CamI2V
 from CameraControl.data.single_image_for_inference import SingleImageForInference
@@ -275,6 +279,19 @@ class Image2Video:
 
 
 if __name__ == "__main__":
+    from PIL import Image
+    input_image = Image.open("/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/CamI2V/demo/pexels/pexels-digitech-1438761.jpg")
+    input_image = np.array(input_image)
     i2v = Image2Video()
-    video_path = i2v.get_image("prompts/art.png", "man fishing in a boat at sunset")
+    
+    from demo.qwen2vl import Qwen2VL_Captioner
+    captioner = Qwen2VL_Captioner(model_path="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/Qwen2-VL-7B-Instruct-AWQ", device=torch.device('cuda'))
+    prompt=captioner.caption(input_image)    
+    # prompt="man fishing in a boat at sunset"
+
+    print(prompt)
+    model_name="512_CamI2V"
+    negative_prompt="Fast movement, jittery motion, abrupt transitions, distorted body, missing limbs, unnatural posture, blurry, cropped, extra limbs, bad anatomy, deformed, glitchy motion, artifacts."
+    camera_type="zoom in"
+    video_path = i2v.get_image(model_name,input_image, prompt,negative_prompt,camera_type)
     print("done", video_path)

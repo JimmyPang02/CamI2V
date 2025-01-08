@@ -1,19 +1,19 @@
 {
     "512_CamI2V": {
         "config_file": "configs/003_cami2v_512x320.yaml",
-        "ckpt_path": "ckpts/512_cami2v_50k.pt",
+        "ckpt_path": "/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/CamI2V/512_cami2v_50k.pt",
         "width": 512,
         "height": 320
     },
     "512_DynamiCrafter": {
         "config_file": "configs/000_dynamicrafter_512x320.yaml",
-        "ckpt_path": "pretrained_models/DynamiCrafter_512/model.ckpt",
+        "ckpt_path": "/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/DynamiCrafter/model_512.ckpt",
         "width": 512,
         "height": 320
     },
     "256_CamI2V": {
         "config_file": "configs/003_cami2v_256x256.yaml",
-        "ckpt_path": "ckpts/256_cami2v.pt",
+        "ckpt_path": "/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/CamI2V/256_cami2v.pt",
         "width": 256,
         "height": 256
     },
@@ -25,13 +25,13 @@
     },
     "256_MotionCtrl": {
         "config_file": "configs/001_motionctrl_256x256.yaml",
-        "ckpt_path": "ckpts/256_motionctrl.pt",
+        "ckpt_path": "/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/CamI2V/256_motionctrl.pt",
         "width": 256,
         "height": 256
     },
     "256_DynamiCrafter": {
         "config_file": "configs/000_dynamicrafter_256x256.yaml",
-        "ckpt_path": "pretrained_models/DynamiCrafter/model.ckpt",
+        "ckpt_path": "/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/DynamiCrafter/model.ckpt",
         "width": 256,
         "height": 256
     }
