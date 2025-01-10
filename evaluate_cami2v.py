@@ -1,7 +1,7 @@
 """
 评估文件应该分成三部分：
 1. 加载RealEstate10K数据集
-2. 把数据集转成对应测试模型(如motionctrl)的输入格式，并完成推理测试
+2. 把数据集转成对应测试模型(如cami2v)的输入格式，并完成推理测试
 3. 根据推理测试结果，计算评估指标
 """
 import os
@@ -12,13 +12,18 @@ import torch
 import torchvision
 from torchvision.io import read_video
 import json
-from main.inference.motionctrl_cmcm_evaluate import run_motionctrl_inference
+from demo.cami2v_test_evaluate import run_cami2v_inference
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision import transforms
+# 添加TensorBoard的SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 import sys
 sys.path.append('../FVD')
 # from frechet_video_distance import frechet_video_distance as fvd
+
+sys.path.append('/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/scripts')
+from check_norm import check_tensor_range
 
 """
 1. 加载RealEstate10K数据集
@@ -108,7 +113,7 @@ def load_RealEstate10K(
     camera_root="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/public/zhengsixiao/RealEstate10K_camera/test",
     dataset_root="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/public/zhengsixiao/RealEstate10K/dataset/test",
     video_root="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/public/zhengsixiao/RealEstate10K/videos/",
-    num_frames=14,
+    num_frames=25, # 采样的帧数，固定25帧吧
     sample_num=1000
 ):
     """
@@ -136,11 +141,6 @@ def load_RealEstate10K(
 
         # 获取视频ID（基于 txt 文件名）
         basename = os.path.splitext(os.path.basename(txt_path))[0]  # e.g., "2bec33eeeab0bb9d"
-        
-        # debug
-        if cnt > 10:
-            print("break")
-            break
         
         # 如果所有文件都检查完了，退出循环
         if cnt >= len(txt_files):
@@ -187,7 +187,7 @@ def load_RealEstate10K(
 """
 1. 加载RealEstate10K数据集
 """
-def load_real_frames(frame_paths, height=576, width=1024):
+def load_real_frames(frame_paths, height=360, width=640):
     """
     从帧路径列表中加载帧图像，并调整大小。
     
@@ -201,7 +201,7 @@ def load_real_frames(frame_paths, height=576, width=1024):
     """
     real_frames = []
     for frame_path in frame_paths:
-        frame = torchvision.io.read_image(frame_path).float() / 255.0
+        frame = torchvision.io.read_image(frame_path).float() # / 255.0 # 归一化
         frame = torchvision.transforms.Resize((height, width))(frame)
         real_frames.append(frame)
     real_frames = torch.stack(real_frames, dim=0)
@@ -209,42 +209,21 @@ def load_real_frames(frame_paths, height=576, width=1024):
 
 
 """
-2. 把数据集转成对应测试模型(如motionctrl)的输入格式，并完成推理测试
+2. 把数据集转成对应测试模型(如cami2v)的输入格式，并完成推理测试
 """
-def save_extrinsics_to_json(parsed_results, output_json_root="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/MotionCtrl/examples/camera_poses_evaluate"):
-    """
-    将从 load_RealEstate10K() 获取的相机外参（extrinsics）保存到指定 JSON 文件夹中
-    将RealEstate10K 轨迹格式转为motionctrl的轨迹格式
-    
-    参数:
-        parsed_results (list): 从 load_RealEstate10K() 获取的解析结果列表。
-        output_json_root (str): 保存 JSON 文件的根目录。
-    """
-    os.makedirs(output_json_root, exist_ok=True)
-
-    for item in parsed_results:
-        video_id = item["video_id"]
-        extrinsics = item["extrinsics"]  # [N, 3, 4]
-        json_path = os.path.join(output_json_root, f"{video_id}_pose.json")
-
-        # 转换为 [N, 12] 格式并保存
-        extrinsics_flat = extrinsics.reshape(-1, 12).cpu().tolist()
-        with open(json_path, 'w') as f:
-            json.dump(extrinsics_flat, f, indent=4)
-        
-        print(f"Saved extrinsics for {video_id} to {json_path}")
+def RealEstate2Cami2v(parsed_results):
+    """cami2v的轨迹格式其实就是RealEstate的轨迹格式，不用处理，直接读realestate即可"""
+    pass
     
 
-
 """
-2. 把数据集转成对应测试模型(如motionctrl)的输入格式，并完成推理测试
+2. 把数据集转成对应测试模型(如cami2v)的输入格式，并完成推理测试
 """
-def run_motionctrl(RealEstate10K_parsed_results):
-    # motionctrl 相机外参保存路径
-    output_pose_dir="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/MotionCtrl/examples/camera_poses_evaluate"
-    # 保存相机外参到 JSON 文件(RealEstate轨迹转成motionctrl格式)
-    save_extrinsics_to_json(RealEstate10K_parsed_results, output_json_root=output_pose_dir)
-
+def run_cami2v(RealEstate10K_parsed_results):
+    
+    # 转成cami2v的轨迹格式
+    RealEstate2Cami2v(RealEstate10K_parsed_results)
+    
     # 打印前几个结果进行检查
     for item in parsed_results[:3]:
         print("轨迹文件:", item["txt_file"])
@@ -256,27 +235,23 @@ def run_motionctrl(RealEstate10K_parsed_results):
         # print(len(item["frame_paths"]))
         print("-------------------------------------------------\n")
 
-
     # 初始化 FID 计算器
     fid = FrechetInceptionDistance(feature=2048, reset_real_features=True, normalize=False, input_img_size=(3, 299, 299), feature_extractor_weights_path="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/FID/weights-inception-2015-12-05-6726825d.pth")
     fid_values = [ ]
-        
-    # 遍历 parsed_results，调用 run_motionctrl_inference（运行motionctrl测试）
+    
+    # 初始化SummaryWriter
+    writer = SummaryWriter(log_dir='./runs/cami2v')
+    
+    # 遍历 parsed_results，调用 run_cami2v_inference（运行cami2v测试）
     for idx, item in enumerate(RealEstate10K_parsed_results):
         video_id = item["video_id"]
         frame_paths = item["frame_paths"]
-        extrinsics = item["extrinsics"]
-
-        if not frame_paths:
-            print(f"[{idx}] {video_id} has no frames, skip.")
-            continue
+        
+        # 取出用于inference的轨迹txt文件
+        pose_path=item["txt_file"]
         
         # 取第 1 帧作为 input
         image_input = frame_paths[0]
-        
-        # 根据video_id 获取对应的 .json 文件
-        pose_path = os.path.join(output_pose_dir, f"{video_id}_pose.json")
-        print(f"Pose path: {pose_path}")
         
         # 读取，查看shape
         import cv2
@@ -287,47 +262,37 @@ def run_motionctrl(RealEstate10K_parsed_results):
         print(f"Use first frame: {image_input}")
 
         # 调用推理函数
-        generated_videos, generated_frames = run_motionctrl_inference(
-            seed=12345,
-            ckpt="../../model/motionctrl/motionctrl_svd.ckpt",
-            config="configs/inference/config_motionctrl_cmcm.yaml",
-            savedir=f"outputs/motionctrl_svd/{video_id}",  # 每个视频ID单独输出
-            savefps=10,
-            ddim_steps=25,
-            frames=14, 
-            image_input=image_input,
-            fps=10,
-            motion=127,
-            cond_aug=0.02,
-            decoding_t=1,
-            resize=True,
-            height=576,
-            width=1024,
-            sample_num=1,
-            transform=True,
-            pose_dir=pose_path,
-            speed=2.0,
-            save_images=True,
-            device="cuda"
-        )
+        
+        generated_videos, generated_frames,scene_with_camera_path=run_cami2v_inference(image_path=image_input, camera_path=pose_path)
+        print(generated_videos)
+        
         """
         3. 根据推理测试结果，计算评估指标
         在线计算的指标可以在这里算，如torchmetric的FID
         """
-        # generated_videos 原视频文件路径(基本全是None，感觉轨迹对应的id和video名称对不上)
-        # generated_frames[0] 生成视频帧 torch.Size([14, 576, 1024, 3])
         
         # 加载生成帧
-        generated_frames=generated_frames[0].permute(0, 3, 1, 2)  # [N, H, W, C] -> [N, C, H, W]
+        generated_frames=generated_frames.permute(0, 3, 1, 2)  # [N, H, W, C] -> [N, C, H, W]
+        print(generated_frames.shape)
         
         # 加载真实帧
-        real_frames = load_real_frames(frame_paths, height=576, width=1024)
+        real_frames = load_real_frames(frame_paths)
+        
+        print(f"generated_frames: {check_tensor_range(generated_frames)}")
+        print(f"real_frames:{check_tensor_range(real_frames)}")
 
         # 计算FID
         fid_value = calculate_fid(generated_frames, real_frames,fid)
         fid_values.append(fid_value)
-
+        
+        # 使用SummaryWriter记录FID值
+        writer.add_scalar('FID', fid_value, global_step=idx)
+    
     print(f"FID value: {fid_values}")
+    print(f"Mean FID: {np.mean(fid_values)}")
+    
+    # 关闭SummaryWriter
+    writer.close()
 
 
 def calculate_fid(generated_frames, real_frames, fid):
@@ -382,13 +347,14 @@ def calculate_fid(generated_frames, real_frames, fid):
 3. 根据推理测试结果，计算评估指标
 """
 if __name__ == "__main__":
-     
+    
+    
     # 获取测试数据集信息
-    parsed_results = load_RealEstate10K()
+    parsed_results = load_RealEstate10K(num_frames=25)
     print("RealEstate10K loaded")
     
     # 在对比模型上跑测试数据集，保存推理结果
-    run_motionctrl(RealEstate10K_parsed_results=parsed_results)
+    run_cami2v(RealEstate10K_parsed_results=parsed_results)
 
     # 计算测评指标
     # 分为在线计算(torchmetric的FID可以不断update)和离线计算(得等结果都跑完保存成文件后，才能读取计算)

@@ -132,7 +132,7 @@ class Image2Video:
         ref_img: Image.Image,
         caption: str,
         negative_prompt: str,
-        camera_pose_type: str,
+        camera_path: str,
         trace_extract_ratio: float = 1.0,
         frame_stride: int = 1,
         steps: int = 25,
@@ -149,9 +149,7 @@ class Image2Video:
         eta: float = 1.0,
         ref_img2: Image.Image = None,
     ):
-        with open(self.camera_pose_meta_path, "r", encoding="utf-8") as f:
-            camera_pose_file_path = json.load(f)[camera_pose_type]
-
+        camera_pose_file_path=camera_path
         camera_data = torch.from_numpy(np.loadtxt(camera_pose_file_path, comments="https"))  # t, -1
         w2cs_3x4 = camera_data[:, 7:].reshape(-1, 3, 4)  # [t, 3, 4]
         w2cs_4x4 = torch.cat(
@@ -219,15 +217,14 @@ class Image2Video:
         video_clip = output["samples"].clamp(-1.0, 1.0).cpu()  # b, c, f, h, w
 
         video_path = f"{self.result_dir}/{model_name}_{uuid4().fields[0]:x}.mp4"
-        self.save_video(video_clip, video_path)
-        return_list = [video_path]
+        path,grid=self.save_video(video_clip, video_path)
 
         if self.return_camera_trace:
             points, colors = self.get_camera_trace(rel_c2ws_lerp_4x4[frame_indices, :3])
             scene_with_camera_path = self.save_pcd("output_with_cam", points, colors)
-            return_list.append(scene_with_camera_path)
+            # return_list.append(scene_with_camera_path)
 
-        return return_list
+        return video_path,grid,scene_with_camera_path
 
     def get_camera_trace(self, rel_c2ws: Tensor):
         points, colors = [], []
@@ -270,14 +267,17 @@ class Image2Video:
             torchvision.utils.make_grid(framesheet, nrow=int(1), padding=0) for framesheet in video
         ]  # [3, n*h, 1*w]
         grid = torch.stack(frame_grids, dim=0)  # stack in temporal dim [t, 3, n*h, w]
-        grid = (grid + 1.0) / 2.0
-        grid = (grid * 255).to(torch.uint8).permute(0, 2, 3, 1)
+        grid = (grid + 1.0) / 2.0 
+        grid = (grid * 255).to(torch.uint8).permute(0, 2, 3, 1) # [t, 3, h, w]
+        
         os.makedirs(os.path.dirname(path), exist_ok=True)
         torchvision.io.write_video(path, grid, fps=self.save_fps, video_codec="h264", options={"crf": "10"})
 
-        return path
-
-def run_cami2v(image_path, camera_type="zoom in"):
+        return path,grid
+    
+from demo.qwen2vl import Qwen2VL_Captioner
+from PIL import Image
+def run_cami2v_inference(image_path, camera_path="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/CamI2V/demo/camera_pose_files/zoom in.txt"):
     input_image = Image.open(image_path)
     input_image = np.array(input_image)
     i2v = Image2Video()
@@ -290,25 +290,12 @@ def run_cami2v(image_path, camera_type="zoom in"):
     print(prompt)
     model_name="512_CamI2V"
     negative_prompt="Fast movement, jittery motion, abrupt transitions, distorted body, missing limbs, unnatural posture, blurry, cropped, extra limbs, bad anatomy, deformed, glitchy motion, artifacts."
-    video_path = i2v.get_image(model_name, input_image, prompt, negative_prompt, camera_type)
-    print("done", video_path)
-    return video_path
+    video_path,grid,scene_with_camera_path = i2v.get_image(model_name, input_image, prompt, negative_prompt, camera_path)
+    
+    print("done", video_path,scene_with_camera_path)
+
+    return video_path,grid,scene_with_camera_path
 
 
 if __name__ == "__main__":
-    from PIL import Image
-    input_image = Image.open("/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/CamI2V/demo/pexels/pexels-digitech-1438761.jpg")
-    input_image = np.array(input_image)
-    i2v = Image2Video()
-    
-    from demo.qwen2vl import Qwen2VL_Captioner
-    captioner = Qwen2VL_Captioner(model_path="/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/model/Qwen2-VL-7B-Instruct-AWQ", device=torch.device('cuda'))
-    prompt=captioner.caption(input_image)    
-    # prompt="man fishing in a boat at sunset"
-
-    print(prompt)
-    model_name="512_CamI2V"
-    negative_prompt="Fast movement, jittery motion, abrupt transitions, distorted body, missing limbs, unnatural posture, blurry, cropped, extra limbs, bad anatomy, deformed, glitchy motion, artifacts."
-    camera_type="zoom in"
-    video_path = i2v.get_image(model_name,input_image, prompt,negative_prompt,camera_type)
-    print("done", video_path)
+    run_cami2v_inference("/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/pengzimian-241108540199/project/CamI2V/demo/pexels/pexels-digitech-1438761.jpg")
