@@ -277,7 +277,7 @@ class Image2Video:
 
         return path
 
-def run_cami2v(image_path, model_name="512_CamI2V", camera_type="zoom in"):
+def run_cami2v(image_path, camera_type="zoom in"):
     input_image = Image.open(image_path)
     input_image = np.array(input_image)
     i2v = Image2Video()
@@ -288,6 +288,7 @@ def run_cami2v(image_path, model_name="512_CamI2V", camera_type="zoom in"):
     # prompt="man fishing in a boat at sunset"
 
     print(prompt)
+    model_name="512_CamI2V"
     negative_prompt="Fast movement, jittery motion, abrupt transitions, distorted body, missing limbs, unnatural posture, blurry, cropped, extra limbs, bad anatomy, deformed, glitchy motion, artifacts."
     video_path = i2v.get_image(model_name, input_image, prompt, negative_prompt, camera_type)
     print("done", video_path)
